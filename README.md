@@ -55,7 +55,7 @@ Once this candidate is published:
 
 ```sh
 helm upgrade --install opsi oci://ghcr.io/codeopsms/helm-charts/opsi \
-  --version 0.1.0-rc.1 --namespace opsi --create-namespace \
+  --version 0.1.0 --namespace opsi --create-namespace \
   --values opsi-values.yaml --wait --timeout 15m
 helm test opsi --namespace opsi
 ```
