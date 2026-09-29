@@ -1,0 +1,74 @@
+{{- if .Values.connector.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "opsi.fullname" . }}-connector
+  labels:
+    {{- include "opsi.labels" . | nindent 4 }}
+    app.kubernetes.io/component: connector
+spec:
+  schedule: {{ .Values.connector.schedule | quote }}
+  suspend: {{ .Values.connector.suspend }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 1800
+      template:
+        metadata:
+          labels:
+            {{- include "opsi.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: connector
+        spec:
+          restartPolicy: Never
+          serviceAccountName: {{ include "opsi.serviceAccountName" . }}
+          automountServiceAccountToken: false
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          containers:
+            - name: connector
+              image: {{ include "opsi.image" . | quote }}
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              # Do not start the server entrypoint in a connector job.
+              command: [/usr/bin/opsi-directory-connector]
+              args:
+                - --config
+                - {{ printf "/etc/opsi/connector/%s" .Values.connector.configKey | quote }}
+                - --log-file
+                - /tmp/connector.log
+              securityContext:
+                runAsUser: 0
+                readOnlyRootFilesystem: true
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: [ALL]
+                seccompProfile:
+                  type: RuntimeDefault
+              resources:
+                {{- toYaml .Values.connector.resources | nindent 16 }}
+              volumeMounts:
+                - name: connector-config
+                  mountPath: /etc/opsi/connector
+                  readOnly: true
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: connector-config
+              secret:
+                secretName: {{ .Values.connector.existingSecret }}
+                defaultMode: 0400
+            - name: tmp
+              emptyDir: {}
+          {{- with .Values.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}

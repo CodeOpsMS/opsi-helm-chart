@@ -1,0 +1,18 @@
+OPSI {{ .Chart.AppVersion }} is configured as {{ .Values.server.hostId }}.
+External API URL: {{ .Values.server.externalUrl }}
+Native HTTPS service: {{ include "opsi.fullname" . }}:{{ .Values.service.port }}
+
+The deployment requires external MariaDB and RedisTimeSeries and the referenced Secrets.
+Data claim: {{ include "opsi.dataClaim" . }}
+{{- if .Values.pxe.enabled }}
+TFTP claim: {{ include "opsi.tftpClaim" . }}
+PXE uses the selected node's network. Configure DHCP/relay to its reachable address;
+the HTTP reverse proxy does not transport TFTP. This chart does not run DHCP.
+{{- end }}
+{{- if .Values.connector.enabled }}
+Directory connector scheduling suspended: {{ .Values.connector.suspend }}.
+Review the Secret configuration and TLS trust before running a manual connector job.
+{{- end }}
+
+The persisted server identity must match server.hostId. Restore data with replicas=0.
+PVCs marked keep are retained on uninstall; existingClaim resources are never managed.

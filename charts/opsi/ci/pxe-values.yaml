@@ -1,0 +1,12 @@
+# Merge after basic-values.yaml. Select a dedicated node before a real PXE run.
+pxe:
+  enabled: true
+  hostNetwork: true
+  tftpPersistence:
+    existingClaim: opsi-existing-tftp
+persistence:
+  existingClaim: opsi-existing-data
+connector:
+  enabled: true
+  suspend: true
+  existingSecret: opsi-connector-config

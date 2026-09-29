@@ -1,0 +1,94 @@
+# Disposable external services for Kind acceptance only. Never deploy to an existing cluster.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opsi-ci-mariadb
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: opsi-ci-mariadb}
+  template:
+    metadata:
+      labels: {app: opsi-ci-mariadb}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: mariadb
+          image: mariadb:11.8.8@sha256:24e76fcec8c003a0362d0dd53f4806e7e79458d7fdeaf47437760e19496f5a9c
+          env:
+            - name: MARIADB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: opsi-ci-credentials, key: mysql-root-password}
+            - name: MARIADB_DATABASE
+              value: opsi
+            - name: MARIADB_USER
+              value: opsi
+            - name: MARIADB_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: opsi-ci-credentials, key: mysql-password}
+          ports:
+            - {name: mysql, containerPort: 3306}
+          readinessProbe:
+            exec:
+              command: [healthcheck.sh, --connect, --innodb_initialized]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {memory: 1Gi}
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/mysql}
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opsi-ci-mariadb
+spec:
+  selector: {app: opsi-ci-mariadb}
+  ports:
+    - {name: mysql, port: 3306, targetPort: mysql}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opsi-ci-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: opsi-ci-redis}
+  template:
+    metadata:
+      labels: {app: opsi-ci-redis}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: redis
+          # This immutable Redis Stack manifest contains Redis 7.4.7 and RedisTimeSeries.
+          image: redis/redis-stack-server:latest@sha256:798ab84d9f266936b034ab11c4d04a2b8e4b441884c5aa7d17ac951eefdf742a
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: opsi-ci-credentials, key: redis-password}
+            - name: REDIS_ARGS
+              value: '--requirepass $(REDIS_PASSWORD)'
+          ports:
+            - {name: redis, containerPort: 6379}
+          readinessProbe:
+            exec:
+              command: [sh, -ec, 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli ping | grep -qx PONG']
+            periodSeconds: 5
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {memory: 512Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opsi-ci-redis
+spec:
+  selector: {app: opsi-ci-redis}
+  ports:
+    - {name: redis, port: 6379, targetPort: redis}

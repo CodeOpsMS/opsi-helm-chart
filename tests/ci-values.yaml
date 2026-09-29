@@ -1,0 +1,37 @@
+fullnameOverride: opsi
+server:
+  hostId: opsi.example.invalid
+  externalUrl: https://opsi.example.invalid:4447
+  configServiceUrls:
+    - https://opsi.example.invalid:4447
+  ipAddress: '192.0.2.10'
+  depotRemoteUrl: webdavs://opsi.example.invalid:4447/depot
+  depotWebdavUrl: webdavs://opsi.example.invalid:4447/depot
+  repositoryRemoteUrl: webdavs://opsi.example.invalid:4447/repository
+  workbenchRemoteUrl: webdavs://opsi.example.invalid:4447/workbench
+admin:
+  username: adminuser
+  existingSecret: opsi-ci-credentials
+  passwordKey: admin-password
+mysql:
+  host: opsi-ci-mariadb
+  port: 3306
+  database: opsi
+  username: opsi
+  existingSecret: opsi-ci-credentials
+  passwordKey: mysql-password
+redis:
+  host: opsi-ci-redis
+  port: 6379
+  existingSecret: opsi-ci-credentials
+  passwordKey: redis-password
+persistence:
+  size: 2Gi
+pxe:
+  enabled: false
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    memory: 3Gi

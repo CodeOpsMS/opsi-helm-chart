@@ -1,0 +1,210 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "opsi.fullname" . }}
+  labels:
+    {{- include "opsi.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  progressDeadlineSeconds: {{ add (int .Values.bootstrap.timeoutSeconds) 180 }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "opsi.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      labels:
+        {{- include "opsi.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: server
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        checksum/runtime: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "opsi.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- if .Values.pxe.hostNetwork }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- else }}
+      dnsPolicy: ClusterFirst
+      {{- end }}
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+        runAsNonRoot: false
+        seccompProfile:
+          type: RuntimeDefault
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.pxe.enabled }}
+      initContainers:
+        - name: tftp-sync
+          image: {{ include "opsi.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: [/usr/bin/python3, /opt/opsi-chart/tftp-sync.py]
+          args: [/tftpboot, /tftp-volume]
+          securityContext:
+            readOnlyRootFilesystem: false
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: runtime
+              mountPath: /opt/opsi-chart
+              readOnly: true
+            # /tftpboot remains the immutable image source in this container.
+            - name: tftp
+              mountPath: /tftp-volume
+      {{- end }}
+      containers:
+        - name: opsi
+          image: {{ include "opsi.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: [/usr/bin/python3, /opt/opsi-chart/runtime.py, launch]
+          securityContext:
+            readOnlyRootFilesystem: false
+          ports:
+            - name: https
+              containerPort: 4447
+              protocol: TCP
+            {{- if .Values.pxe.enabled }}
+            - name: tftp
+              containerPort: 69
+              protocol: UDP
+            {{- end }}
+          env:
+            - name: OPSI_HOST_ID
+              value: {{ .Values.server.hostId | quote }}
+            - name: OPSI_HOST_ROLE
+              value: configserver
+            - name: OPSI_TFTPBOOT
+              value: {{ .Values.pxe.enabled | quote }}
+            - name: OPSICONFD_EXTERNAL_URL
+              value: {{ .Values.server.externalUrl | quote }}
+            - name: OPSICONFD_INTERNAL_URL
+              value: https://127.0.0.1:4447
+            - name: OPSICONFD_SSL_SERVER_CERT_TYPE
+              value: opsi-ca
+            - name: OPSICONFD_SSL_SERVER_CERT_SANS
+              value: {{ list .Values.server.hostId "localhost" "127.0.0.1" (include "opsi.fullname" .) (printf "%s.%s.svc" (include "opsi.fullname" .) .Release.Namespace) | toJson | quote }}
+            - name: OPSICONFD_TRUSTED_PROXIES
+              value: {{ .Values.server.trustedProxies | toJson | quote }}
+            - name: OPSICONFD_LOG_LEVEL
+              value: {{ .Values.server.logLevel | quote }}
+            - name: OPSICONFD_SKIP_SETUP
+              value: '["grafana"]'
+            - name: TZ
+              value: {{ .Values.server.timezone | quote }}
+            - name: OPSI_ADMIN_USER
+              value: {{ .Values.admin.username | quote }}
+            - name: OPSI_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.admin.existingSecret }}
+                  key: {{ .Values.admin.passwordKey }}
+            - name: MYSQL_HOST
+              value: {{ .Values.mysql.host | quote }}
+            - name: MYSQL_PORT
+              value: {{ .Values.mysql.port | quote }}
+            - name: MYSQL_DATABASE
+              value: {{ .Values.mysql.database | quote }}
+            - name: MYSQL_USER
+              value: {{ .Values.mysql.username | quote }}
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.mysql.existingSecret }}
+                  key: {{ .Values.mysql.passwordKey }}
+            - name: REDIS_HOST
+              value: {{ .Values.redis.host | quote }}
+            - name: REDIS_PORT
+              value: {{ .Values.redis.port | quote }}
+            - name: REDIS_DATABASE
+              value: {{ .Values.redis.database | quote }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.redis.existingSecret }}
+                  key: {{ .Values.redis.passwordKey }}
+          startupProbe:
+            httpGet:
+              path: /status/short
+              port: https
+              scheme: HTTPS
+            {{- toYaml .Values.probes.startup | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /status/short
+              port: https
+              scheme: HTTPS
+            {{- toYaml .Values.probes.liveness | nindent 12 }}
+          readinessProbe:
+            exec:
+              command: [/usr/bin/python3, /opt/opsi-chart/runtime.py, ready]
+            {{- toYaml .Values.probes.readiness | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: runtime
+              mountPath: /opt/opsi-chart
+              readOnly: true
+            - name: data
+              mountPath: /data
+            {{- if .Values.pxe.enabled }}
+            - name: tftp
+              mountPath: /tftpboot
+            {{- end }}
+            {{- if .Values.tls.additionalCAs }}
+            - name: additional-ca
+              mountPath: /opt/opsi-additional-ca/values
+              readOnly: true
+            {{- end }}
+            {{- if .Values.tls.existingCAConfigMap }}
+            - name: existing-ca
+              mountPath: /opt/opsi-additional-ca/existing
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: runtime
+          configMap:
+            name: {{ include "opsi.fullname" . }}-runtime
+            defaultMode: 0444
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "opsi.dataClaim" . }}
+        {{- if .Values.pxe.enabled }}
+        - name: tftp
+          persistentVolumeClaim:
+            claimName: {{ include "opsi.tftpClaim" . }}
+        {{- end }}
+        {{- if .Values.tls.additionalCAs }}
+        - name: additional-ca
+          configMap:
+            name: {{ include "opsi.fullname" . }}-additional-ca
+        {{- end }}
+        {{- if .Values.tls.existingCAConfigMap }}
+        - name: existing-ca
+          configMap:
+            name: {{ .Values.tls.existingCAConfigMap }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
