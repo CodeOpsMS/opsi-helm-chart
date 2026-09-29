@@ -1,0 +1,18 @@
+# Rendering/CI only: pre-create these Secret references in a disposable namespace.
+server:
+  hostId: opsi.example.invalid
+  externalUrl: https://opsi.example.invalid:4447
+  configServiceUrls: [https://opsi.example.invalid:4447]
+  ipAddress: 192.0.2.10
+  depotRemoteUrl: webdavs://opsi.example.invalid:4447/depot
+  depotWebdavUrl: webdavs://opsi.example.invalid:4447/depot
+  repositoryRemoteUrl: webdavs://opsi.example.invalid:4447/repository
+  workbenchRemoteUrl: webdavs://opsi.example.invalid:4447/workbench
+admin:
+  existingSecret: opsi-ci-admin
+mysql:
+  host: opsi-ci-mariadb
+  existingSecret: opsi-ci-mysql
+redis:
+  host: opsi-ci-redis
+  existingSecret: opsi-ci-redis

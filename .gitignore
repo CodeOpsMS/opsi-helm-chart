@@ -1,0 +1,5 @@
+.artifacts/
+.candidate/
+__pycache__/
+*.pyc
+.DS_Store

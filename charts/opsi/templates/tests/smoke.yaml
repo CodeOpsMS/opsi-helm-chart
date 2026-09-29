@@ -1,0 +1,82 @@
+{{- if and .Values.tests.enabled (eq (int .Values.replicaCount) 1) }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "opsi.fullname" . }}-test
+  labels:
+    {{- include "opsi.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  activeDeadlineSeconds: 120
+  serviceAccountName: {{ include "opsi.serviceAccountName" . }}
+  automountServiceAccountToken: false
+  {{- with .Values.imagePullSecrets }}
+  imagePullSecrets:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  # Mount only the public CA file, on the server's node for ReadWriteOnce.
+  affinity:
+    podAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              {{- include "opsi.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: server
+          topologyKey: kubernetes.io/hostname
+  {{- with .Values.tolerations }}
+  tolerations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  containers:
+    - name: smoke
+      image: {{ include "opsi.image" . | quote }}
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      command: [/usr/bin/python3, /opt/opsi-chart/runtime.py, test]
+      env:
+        - name: OPSI_TEST_URL
+          value: {{ printf "https://%s:%v" (include "opsi.fullname" .) .Values.service.port | quote }}
+        - name: OPSI_ADMIN_USER
+          value: {{ .Values.admin.username | quote }}
+        - name: OPSI_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.admin.existingSecret }}
+              key: {{ .Values.admin.passwordKey }}
+      securityContext:
+        runAsUser: 65534
+        runAsGroup: 65534
+        runAsNonRoot: true
+        readOnlyRootFilesystem: true
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: [ALL]
+        seccompProfile:
+          type: RuntimeDefault
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: "1"
+          memory: 256Mi
+      volumeMounts:
+        - name: runtime
+          mountPath: /opt/opsi-chart
+          readOnly: true
+        - name: data
+          mountPath: /opt/opsi-test-ca.pem
+          subPath: etc/ssl/opsi-ca-cert.pem
+          readOnly: true
+  volumes:
+    - name: runtime
+      configMap:
+        name: {{ include "opsi.fullname" . }}-runtime
+    - name: data
+      persistentVolumeClaim:
+        claimName: {{ include "opsi.dataClaim" . }}
+        readOnly: true
+{{- end }}

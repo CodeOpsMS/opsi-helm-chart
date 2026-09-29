@@ -1,0 +1,41 @@
+{{- if not .Values.persistence.existingClaim }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "opsi.dataClaim" . }}
+  labels:
+    {{- include "opsi.labels" . | nindent 4 }}
+  {{- if .Values.persistence.keep }}
+  annotations:
+    helm.sh/resource-policy: keep
+  {{- end }}
+spec:
+  accessModes: {{ .Values.persistence.accessModes | toJson }}
+  {{- if .Values.persistence.storageClass }}
+  storageClassName: {{ .Values.persistence.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.size }}
+{{- end }}
+{{- if and .Values.pxe.enabled (not .Values.pxe.tftpPersistence.existingClaim) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "opsi.tftpClaim" . }}
+  labels:
+    {{- include "opsi.labels" . | nindent 4 }}
+  {{- if .Values.pxe.tftpPersistence.keep }}
+  annotations:
+    helm.sh/resource-policy: keep
+  {{- end }}
+spec:
+  accessModes: {{ .Values.pxe.tftpPersistence.accessModes | toJson }}
+  {{- if .Values.pxe.tftpPersistence.storageClass }}
+  storageClassName: {{ .Values.pxe.tftpPersistence.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.pxe.tftpPersistence.size }}
+{{- end }}

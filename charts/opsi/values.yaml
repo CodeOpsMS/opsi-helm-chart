@@ -1,0 +1,117 @@
+# Set explicit identity, endpoints and existing credentials before installation.
+replicaCount: 1
+nameOverride: ""
+fullnameOverride: ""
+image:
+  repository: ghcr.io/codeopsms/opsi-server
+  tag: sha-bd853b7a2cc55fbcfa127066ab2dde7567e0234d
+  digest: sha256:57805feca7fae85e1acc6ab079333e399e59ec34556f0bcfd2a28a2135d2453e
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+server:
+  hostId: ""
+  externalUrl: ""
+  configServiceUrls: []
+  ipAddress: ""
+  depotRemoteUrl: ""
+  depotWebdavUrl: ""
+  repositoryRemoteUrl: ""
+  workbenchRemoteUrl: ""
+  trustedProxies: []
+  timezone: UTC
+  logLevel: 4
+admin:
+  # The upstream entrypoint creates this exact account.
+  username: adminuser
+  existingSecret: ""
+  passwordKey: password
+mysql:
+  host: ""
+  port: 3306
+  database: opsi
+  username: opsi
+  existingSecret: ""
+  passwordKey: password
+redis:
+  # Requires the RedisTimeSeries module, not a plain Redis server.
+  host: ""
+  port: 6379
+  database: 0
+  existingSecret: ""
+  passwordKey: password
+persistence:
+  existingClaim: ""
+  size: 50Gi
+  storageClass: ""
+  accessModes: [ReadWriteOnce]
+  keep: true
+pxe:
+  enabled: false
+  # Required when PXE is enabled: TFTP uses dynamic UDP transfer ports.
+  hostNetwork: false
+  tftpPersistence:
+    existingClaim: ""
+    size: 10Gi
+    storageClass: ""
+    accessModes: [ReadWriteOnce]
+    keep: true
+bootstrap:
+  # Reconcile only this server's depot URLs and the three global client defaults.
+  enabled: true
+  timeoutSeconds: 900
+tls:
+  # Public CA certificates only. The OPSI CA and private keys remain in /data.
+  additionalCAs: []
+  # All *.pem and *.crt files are merged; do not supply the nginx leaf or keys.
+  existingCAConfigMap: ""
+service:
+  type: ClusterIP
+  port: 4447
+  annotations: {}
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+podAnnotations: {}
+podLabels: {}
+resources:
+  requests:
+    cpu: "1"
+    memory: 1Gi
+  limits:
+    cpu: "2"
+    memory: 4Gi
+terminationGracePeriodSeconds: 90
+probes:
+  startup:
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 90
+  liveness:
+    periodSeconds: 20
+    timeoutSeconds: 5
+    failureThreshold: 6
+  readiness:
+    periodSeconds: 10
+    timeoutSeconds: 8
+    failureThreshold: 3
+nodeSelector: {}
+tolerations: []
+affinity: {}
+connector:
+  enabled: false
+  # Scheduling must be deliberately enabled after an isolated manual test.
+  suspend: true
+  schedule: "0 3 * * *"
+  existingSecret: ""
+  # JSON configuration; any extra Secret keys (e.g. CA files) are mounted too.
+  configKey: config.json
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+tests:
+  enabled: true

@@ -1,0 +1,87 @@
+name: Release tested chart
+
+on:
+  workflow_dispatch:
+    inputs:
+      ci_run_id:
+        description: Successful main-push Helm CI run ID
+        required: true
+        type: string
+      live_chart_sha256:
+        description: SHA-256 of the exact archive accepted on the real cluster
+        required: true
+        type: string
+      live_acceptance_reference:
+        description: Non-secret reference to the recorded real-cluster acceptance
+        required: true
+        type: string
+
+concurrency:
+  group: release-opsi-chart
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      source_sha: ${{ steps.verify.outputs.source_sha }}
+      artifact_id: ${{ steps.verify.outputs.artifact_id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Verify trusted CI and explicit live acceptance
+        id: verify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_RUN_ID: ${{ inputs.ci_run_id }}
+          LIVE_SHA256: ${{ inputs.live_chart_sha256 }}
+          LIVE_REFERENCE: ${{ inputs.live_acceptance_reference }}
+        run: |
+          set -euo pipefail
+          [[ "$CI_RUN_ID" =~ ^[0-9]+$ ]]
+          [[ "$LIVE_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          [[ -n "${LIVE_REFERENCE//[[:space:]]/}" ]]
+          mkdir -p "$RUNNER_TEMP/provenance"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$CI_RUN_ID" > "$RUNNER_TEMP/provenance/run.json"
+          gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/actions/runs/$CI_RUN_ID/jobs?filter=latest&per_page=100" > "$RUNNER_TEMP/provenance/jobs.json"
+          source_sha=$(python3 scripts/candidate.py verify-run "$RUNNER_TEMP/provenance")
+          artifact_id=$(gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/actions/runs/$CI_RUN_ID/artifacts?per_page=100" | jq -er --arg prefix "opsi-chart-$CI_RUN_ID-" '[.[] | .artifacts[] | select(.expired == false and (.name | startswith($prefix)))] | max_by(.id).id // error("No candidate artifact")')
+          echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
+          echo "artifact_id=$artifact_id" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.verify.outputs.source_sha }}
+          fetch-depth: 0
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5
+        with:
+          version: v4.2.3
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.verify.outputs.artifact_id }}
+          run-id: ${{ inputs.ci_run_id }}
+          github-token: ${{ github.token }}
+          path: .candidate
+      - name: Promote the exact accepted archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ needs.verify.outputs.source_sha }}
+          CI_RUN_ID: ${{ inputs.ci_run_id }}
+          LIVE_SHA256: ${{ inputs.live_chart_sha256 }}
+          LIVE_REFERENCE: ${{ inputs.live_acceptance_reference }}
+        run: scripts/publish.sh .candidate
