@@ -18,7 +18,7 @@ spec:
   imagePullSecrets:
     {{- toYaml . | nindent 4 }}
   {{- end }}
-  # A read-only mount on the server's node works with ReadWriteOnce claims.
+  # Mount only the public CA file, on the server's node for ReadWriteOnce.
   affinity:
     podAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
@@ -47,7 +47,9 @@ spec:
               name: {{ .Values.admin.existingSecret }}
               key: {{ .Values.admin.passwordKey }}
       securityContext:
-        runAsUser: 0
+        runAsUser: 65534
+        runAsGroup: 65534
+        runAsNonRoot: true
         readOnlyRootFilesystem: true
         allowPrivilegeEscalation: false
         capabilities:
@@ -66,7 +68,8 @@ spec:
           mountPath: /opt/opsi-chart
           readOnly: true
         - name: data
-          mountPath: /data
+          mountPath: /opt/opsi-test-ca.pem
+          subPath: etc/ssl/opsi-ca-cert.pem
           readOnly: true
   volumes:
     - name: runtime

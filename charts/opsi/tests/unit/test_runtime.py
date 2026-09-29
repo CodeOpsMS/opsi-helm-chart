@@ -225,6 +225,16 @@ class ChartTests(unittest.TestCase):
         self.assertEqual(custom.returncode, 0, custom.stderr)
         self.assertIn("progressDeadlineSeconds: 1380", custom.stdout)
 
+    def test_smoke_mounts_only_public_ca_without_root_or_extra_capabilities(self):
+        result = self.helm("--show-only", "templates/tests/smoke.yaml")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("mountPath: /opt/opsi-test-ca.pem", result.stdout)
+        self.assertIn("subPath: etc/ssl/opsi-ca-cert.pem", result.stdout)
+        self.assertNotIn("mountPath: /data", result.stdout)
+        self.assertIn("runAsNonRoot: true", result.stdout)
+        self.assertIn("drop: [ALL]", result.stdout)
+        self.assertNotIn("fsGroup:", result.stdout)
+
     def test_pxe_existing_claims_and_suspended_connector(self):
         result = self.helm("-f", str(CHART / "ci/pxe-values.yaml"))
         self.assertEqual(result.returncode, 0, result.stderr)

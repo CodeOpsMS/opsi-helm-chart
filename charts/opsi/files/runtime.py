@@ -213,7 +213,7 @@ def ready():
 def helm_test():
     global BASE_URL, CA_FILE
     BASE_URL = os.environ["OPSI_TEST_URL"]
-    CA_FILE = Path("/data/etc/ssl/opsi-ca-cert.pem")
+    CA_FILE = Path("/opt/opsi-test-ca.pem")
     if not status_ok(request("/status/")[0]):
         raise RuntimeError("OPSI status reports a dependency error")
     server = config()["server"]
