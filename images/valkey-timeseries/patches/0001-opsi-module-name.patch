@@ -1,0 +1,5 @@
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -49 +49 @@
+-pub const MODULE_NAME: &str = "ts";
++pub const MODULE_NAME: &str = "timeseries";
