@@ -6,7 +6,34 @@ entries:
       artifacthub.io/license: MIT
     apiVersion: v2
     appVersion: 4.3.56.11
-    created: "2026-09-30T08:19:40.310623227Z"
+    created: "2026-09-30T13:36:00.454731264Z"
+    description: OPSI config server with persistent data, native TLS and optional
+      PXE on Kubernetes.
+    digest: f084938bfc7e0e86443b06a80a91c30cca4eef176cabb7593bce1dbccdd410ba
+    home: https://opsi.org
+    keywords:
+    - opsi
+    - endpoint-management
+    - pxe
+    - tftp
+    kubeVersion: '>=1.25.0-0'
+    maintainers:
+    - name: CodeOpsMS
+      url: https://github.com/CodeOpsMS
+    name: opsi
+    sources:
+    - https://github.com/CodeOpsMS/opsi-helm-chart
+    - https://github.com/opsi-org/opsi-docker
+    type: application
+    urls:
+    - https://codeopsms.github.io/opsi-helm-chart/opsi-0.2.0.tgz
+    version: 0.2.0
+  - annotations:
+      artifacthub.io/category: integration-delivery
+      artifacthub.io/license: MIT
+    apiVersion: v2
+    appVersion: 4.3.56.11
+    created: "2026-09-30T13:36:00.45378605Z"
     description: OPSI config server with persistent data, native TLS and optional
       PXE on Kubernetes.
     digest: 8b704a92607e3f00d387874a4359dc2ca7f093ae777ab826c59c895cfa9bb52c
@@ -28,4 +55,4 @@ entries:
     urls:
     - https://codeopsms.github.io/opsi-helm-chart/opsi-0.1.0.tgz
     version: 0.1.0
-generated: "2026-09-30T08:19:40.309642816Z"
+generated: "2026-09-30T13:36:00.45281579Z"
