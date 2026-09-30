@@ -47,6 +47,8 @@ jobs:
           /tmp/kubeconform -strict -summary -kubernetes-version 1.34.0 /tmp/opsi.yaml
           helm template opsi charts/opsi --namespace opsi-ci -f tests/ci-values.yaml --set pxe.enabled=true --set pxe.hostNetwork=true > /tmp/opsi-pxe.yaml
           /tmp/kubeconform -strict -summary -kubernetes-version 1.34.0 /tmp/opsi-pxe.yaml
+          helm template opsi charts/opsi --namespace opsi-ci -f tests/ci-values.yaml --set fileStorage.enabled=true,fileStorage.existingClaim=opsi-files,fileStorage.mappedUid=977,fileStorage.mappedGid=988 > /tmp/opsi-files.yaml
+          /tmp/kubeconform -strict -summary -kubernetes-version 1.34.0 /tmp/opsi-files.yaml
           python3 -m unittest discover -s tests -p 'test_*.py'
           shellcheck scripts/*.sh
 

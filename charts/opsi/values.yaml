@@ -45,6 +45,13 @@ persistence:
   storageClass: ""
   accessModes: [ReadWriteOnce]
   keep: true
+fileStorage:
+  # Optional, separately prepared depot/repository/workbench PVC; see docs/storage.md.
+  enabled: false
+  existingClaim: ""
+  # Set both only for an export with verified mapped ownership.
+  mappedUid: null
+  mappedGid: null
 pxe:
   enabled: false
   # Required when PXE is enabled: TFTP uses dynamic UDP transfer ports.

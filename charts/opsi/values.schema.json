@@ -598,6 +598,39 @@
     },
     "global": {
       "type": "object"
+    },
+    "fileStorage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "existingClaim": {
+          "type": "string",
+          "pattern": "^([a-z0-9]([-a-z0-9.]*[a-z0-9])?)?$"
+        },
+        "mappedUid": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "mappedGid": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 2147483647
+        }
+      },
+      "required": [
+        "enabled",
+        "existingClaim"
+      ]
     }
   },
   "required": [

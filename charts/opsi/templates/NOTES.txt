@@ -4,6 +4,9 @@ Native HTTPS service: {{ include "opsi.fullname" . }}:{{ .Values.service.port }}
 
 The deployment requires external MariaDB and RedisTimeSeries and the referenced Secrets.
 Data claim: {{ include "opsi.dataClaim" . }}
+{{- if .Values.fileStorage.enabled }}
+Separate depot/repository/workbench claim: {{ .Values.fileStorage.existingClaim }}
+{{- end }}
 {{- if .Values.pxe.enabled }}
 TFTP claim: {{ include "opsi.tftpClaim" . }}
 PXE uses the selected node's network. Configure DHCP/relay to its reachable address;
