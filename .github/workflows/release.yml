@@ -15,6 +15,11 @@ on:
         description: Non-secret reference to the recorded real-cluster acceptance
         required: true
         type: string
+      immutable_releases_confirmed:
+        description: I verified that immutable releases are enabled in repository settings
+        required: true
+        type: boolean
+        default: false
 
 concurrency:
   group: release-opsi-chart
@@ -42,8 +47,13 @@ jobs:
           CI_RUN_ID: ${{ inputs.ci_run_id }}
           LIVE_SHA256: ${{ inputs.live_chart_sha256 }}
           LIVE_REFERENCE: ${{ inputs.live_acceptance_reference }}
+          IMMUTABLE_RELEASES_CONFIRMED: ${{ inputs.immutable_releases_confirmed }}
         run: |
           set -euo pipefail
+          if [[ "${IMMUTABLE_RELEASES_CONFIRMED:-false}" != true ]]; then
+            echo 'Verify immutable releases in repository settings and explicitly confirm before dispatch.' >&2
+            exit 1
+          fi
           [[ "$CI_RUN_ID" =~ ^[0-9]+$ ]]
           [[ "$LIVE_SHA256" =~ ^[0-9a-f]{64}$ ]]
           [[ -n "${LIVE_REFERENCE//[[:space:]]/}" ]]
@@ -67,7 +77,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ needs.verify.outputs.source_sha }}
+          # Fixes to publishing tools do not change the accepted chart archive.
+          ref: ${{ github.sha }}
           fetch-depth: 0
       - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5
         with:

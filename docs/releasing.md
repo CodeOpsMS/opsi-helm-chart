@@ -25,6 +25,8 @@ Before the first release:
 
 No workflow changes these repository settings automatically. Protect `main` with the static and runtime checks appropriate to the repository's review policy.
 
+Before each release dispatch, verify that immutable releases remain enabled in repository settings, or run `gh api repos/CodeOpsMS/opsi-helm-chart/immutable-releases --jq .enabled` with your administrator account. This setting's API requires Administration read permission, which the workflow's `GITHUB_TOKEN` cannot receive. The workflow therefore requires an explicit operator confirmation before publishing and independently checks that the resulting published release is immutable; it does not automatically verify the repository setting beforehand.
+
 ## Publish
 
 Dispatch `Release tested chart` from `main` with:
@@ -32,8 +34,9 @@ Dispatch `Release tested chart` from `main` with:
 - `ci_run_id`: the successful main-push Helm CI run.
 - `live_chart_sha256`: the SHA-256 from the real-cluster acceptance.
 - `live_acceptance_reference`: the non-secret location/identifier of that acceptance record.
+- `immutable_releases_confirmed`: `true` only after checking the repository setting. The default is `false`, which fails verification before any publishing action.
 
-The workflow checks the CI source repository, event, branch, commit and each required job. It retrieves the candidate, verifies its provenance and the supplied live checksum, and checks out the tested source commit. A chart version is never reused for different bytes.
+The workflow checks the CI source repository, event, branch, commit and each required job. It retrieves the candidate and verifies its provenance and the supplied live checksum. Publishing tools come from the fixed `main` commit selected by the workflow dispatch, while the accepted archive, release tag target and lint values retain the tested source commit. This allows publishing-tool fixes without repackaging or changing the accepted chart. A chart version is never reused for different bytes.
 
 Publication uses the **same archive** for all destinations:
 
