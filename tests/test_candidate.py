@@ -1,9 +1,12 @@
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
+import subprocess
 import tarfile
 import tempfile
+import textwrap
 import unittest
 
 spec = importlib.util.spec_from_file_location('candidate', Path(__file__).parents[1] / 'scripts/candidate.py')
@@ -77,6 +80,35 @@ class ReleaseGateTests(unittest.TestCase):
     def test_foreign_repository_is_rejected(self):
         with self.assertRaises(ValueError):
             candidate.verify_run(self.run | {'head_repository': {'full_name': 'someone/fork'}}, self.jobs, self.repository)
+
+
+class ReleaseSetupTests(unittest.TestCase):
+    def test_setup_confirmation_gates_real_workflow_before_any_api_call(self):
+        workflow = (Path(__file__).parents[1] / '.github/workflows/release.yml').read_text()
+        # Execute the actual verification shell block, with gh replaced by a
+        # sentinel, so absent/false confirmation must fail before network use.
+        script = textwrap.dedent(workflow.split('        run: |\n', 1)[1].split('\n\n  publish:', 1)[0])
+        for confirmed in (None, '', 'false', 'true'):
+            with self.subTest(confirmed=confirmed), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                gh = root / 'gh'
+                gh.write_text('#!/bin/sh\ntouch "$GH_TEST_MARKER"\nexit 93\n')
+                gh.chmod(0o755)
+                marker = root / 'api-called'
+                env = {'PATH': str(root) + os.pathsep + os.environ['PATH'],
+                       'CI_RUN_ID': '123', 'LIVE_SHA256': 'a' * 64,
+                       'LIVE_REFERENCE': 'recorded-acceptance', 'RUNNER_TEMP': directory,
+                       'GITHUB_REPOSITORY': 'CodeOpsMS/opsi-helm-chart', 'GH_TEST_MARKER': str(marker)}
+                if confirmed is not None:
+                    env['IMMUTABLE_RELEASES_CONFIRMED'] = confirmed
+                result = subprocess.run(['bash', '-c', script], env=env, text=True, capture_output=True)
+                if confirmed == 'true':
+                    self.assertEqual(result.returncode, 93, result.stderr)
+                    self.assertTrue(marker.exists())
+                else:
+                    self.assertEqual(result.returncode, 1, result.stderr)
+                    self.assertIn('Verify immutable releases', result.stderr)
+                    self.assertFalse(marker.exists())
 
 
 if __name__ == '__main__':

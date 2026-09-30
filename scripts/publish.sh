@@ -20,8 +20,11 @@ cleanup() {
 }
 trap cleanup EXIT
 export HELM_REGISTRY_CONFIG="$work/registry-auth.json"
-helm lint "$package" --strict -f tests/ci-values.yaml
-test "$(gh api "repos/$GITHUB_REPOSITORY/immutable-releases" --jq .enabled)" = true
+git show "$SOURCE_SHA:tests/ci-values.yaml" > "$work/ci-values.yaml"
+helm lint "$package" --strict -f "$work/ci-values.yaml"
+# Repository immutability setup is operator-confirmed: reading that setting
+# requires Administration permission, which GITHUB_TOKEN cannot receive.
+# The published release itself is still checked for immutability below.
 gh api "repos/$GITHUB_REPOSITORY/pages" --jq .html_url >/dev/null
 
 prerelease=false
