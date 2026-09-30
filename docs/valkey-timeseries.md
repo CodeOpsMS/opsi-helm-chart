@@ -24,7 +24,7 @@ After review and successful PR checks, run **Valkey TimeSeries module** on `main
 
 ## InitContainer contract
 
-The artifact contains `/bin/sh`, `cp`, `chmod` and `/module/libvalkey_timeseries.so`. Its default user is `1000:1000`; its default command copies the module with `cp -f` into `/out/libvalkey_timeseries.so` and sets mode `0444`. Force replacement makes retries work when an earlier init already left a read-only file; CI repeats the init against the same volume. Mount an EmptyDir writable through `fsGroup: 1000` at `/out`. Mount that same volume read-only in the SUSE server at `/mnt/valkey/modules`, and configure:
+The artifact contains `/bin/sh`, `cp`, `chmod` and `/module/libvalkey_timeseries.so`. Its default user is `1000:1000`; its default command copies the module with `cp -f` into `/out/libvalkey_timeseries.so` and sets mode `0555` (Valkey requires the execute bits when loading a module). Force replacement makes retries work when an earlier init already left a read-only file; CI repeats the init against the same volume. Mount an EmptyDir writable through `fsGroup: 1000` at `/out`. Mount that same volume read-only in the SUSE server at `/mnt/valkey/modules`, and configure:
 
 ```text
 loadmodule /mnt/valkey/modules/libvalkey_timeseries.so

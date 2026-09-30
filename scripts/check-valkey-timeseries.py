@@ -98,7 +98,7 @@ def main():
         docker("run", "--rm", "--user", "0:0", "-v", module_volume + ":/out",
                "--entrypoint", "sh", args.image, "-ec", "chown 1000:1000 /out")
         docker("run", "--rm", "-v", module_volume + ":/out", args.image)
-        # Retried init containers must replace their own previously chmod-0444 artifact.
+        # Retried init containers must replace their own previously chmod-0555 artifact.
         docker("run", "--rm", "-v", module_volume + ":/out", args.image)
         for mode in ("rdb", "aof"):
             data_volume = prefix + "-" + mode

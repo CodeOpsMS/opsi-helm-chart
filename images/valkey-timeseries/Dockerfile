@@ -26,7 +26,7 @@ RUN patch --fuzz=0 -p1 < /tmp/opsi-module-name.patch \
     && cargo build --locked --release --lib \
     && mkdir /module \
     && cp target/release/libvalkey_timeseries.so /module/ \
-    && chmod 0444 /module/libvalkey_timeseries.so \
+    && chmod 0555 /module/libvalkey_timeseries.so \
     && readelf -d /module/libvalkey_timeseries.so > /module/elf-dynamic.txt \
     && readelf --version-info /module/libvalkey_timeseries.so > /module/elf-versions.txt \
     && ldd /module/libvalkey_timeseries.so > /module/ldd.txt \
@@ -47,4 +47,4 @@ COPY --from=builder /module/elf-dynamic.txt /module/elf-versions.txt /usr/share/
 COPY --from=builder /source/LICENSE /usr/share/licenses/valkey-timeseries/LICENSE
 COPY NOTICE /usr/share/valkey-timeseries/NOTICE
 USER 1000:1000
-ENTRYPOINT ["/bin/sh", "-ec", "cp -f /module/libvalkey_timeseries.so /out/libvalkey_timeseries.so && chmod 0444 /out/libvalkey_timeseries.so"]
+ENTRYPOINT ["/bin/sh", "-ec", "cp -f /module/libvalkey_timeseries.so /out/libvalkey_timeseries.so && chmod 0555 /out/libvalkey_timeseries.so"]
