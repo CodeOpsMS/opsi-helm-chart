@@ -1,11 +1,5 @@
 --- a/src/lib.rs
 +++ b/src/lib.rs
-@@ -46,7 +46,7 @@
- use crate::series::series_data_type::VK_TIME_SERIES_TYPE;
- 
- pub const VK_TIMESERIES_VERSION: i32 = 1;
+@@ -49 +49 @@
 -pub const MODULE_NAME: &str = "ts";
 +pub const MODULE_NAME: &str = "timeseries";
- 
- static IS_MODULE_INITIALIZED: AtomicBool = AtomicBool::new(false);
- static IS_SHUTTING_DOWN: AtomicBool = AtomicBool::new(false);
