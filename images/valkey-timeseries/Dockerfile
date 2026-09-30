@@ -47,4 +47,4 @@ COPY --from=builder /module/elf-dynamic.txt /module/elf-versions.txt /usr/share/
 COPY --from=builder /source/LICENSE /usr/share/licenses/valkey-timeseries/LICENSE
 COPY NOTICE /usr/share/valkey-timeseries/NOTICE
 USER 1000:1000
-ENTRYPOINT ["/bin/sh", "-ec", "cp /module/libvalkey_timeseries.so /out/libvalkey_timeseries.so && chmod 0444 /out/libvalkey_timeseries.so"]
+ENTRYPOINT ["/bin/sh", "-ec", "cp -f /module/libvalkey_timeseries.so /out/libvalkey_timeseries.so && chmod 0444 /out/libvalkey_timeseries.so"]
