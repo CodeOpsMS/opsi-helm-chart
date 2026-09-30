@@ -149,7 +149,7 @@ def run(args):
 
         modules = [dict(zip(row[::2], row[1::2])) for row in client.command("MODULE", "LIST")]
         module_names = [row[b"name"].decode() for row in modules]
-        native_health = "timeseries" in module_names
+        opsi_required_module_name_present = "timeseries" in module_names
         general_info = client.command("INFO").decode()
         require(any("name=" + name + "," in general_info for name in module_names), "INFO omits loaded module metadata")
 
@@ -227,7 +227,7 @@ def run(args):
 
         require(args.expected_module in module_names, "expected module identity missing; functional checks passed")
         return {"success": True, "module_names": module_names,
-                "unmodified_opsi_healthcheck_passes": native_health, "checks": checked}
+                "opsi_required_module_name_present": opsi_required_module_name_present, "checks": checked}
     finally:
         try:
             client.command("DEL", *keys.values())
