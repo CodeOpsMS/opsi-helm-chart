@@ -156,25 +156,31 @@ def reconcile(cfg):
     update = {key: server[key] for key in fields if own[0].get(key) != server[key]}
     if update:
         rpc("host_updateObject", {"host": {**own[0], **update}})
+    endpoint = urllib.parse.urlsplit(server["externalUrl"])
+    port = endpoint.port if endpoint.port is not None else 443
+    # The boot image accepts one service URL; opsipxeconfd otherwise joins the
+    # Windows client's failover URLs with commas into an unusable kernel value.
+    netboot_service = f"https://{endpoint.hostname}:{port}/rpc"
     defaults = {
         "clientconfig.configserver.url": server["configServiceUrls"],
+        "netboot.linux-bootimage.cmdline.service": [netboot_service],
         "clientconfig.depot.protocol": ["webdav"],
         "clientconfig.depot.protocol.netboot": ["webdav"],
     }
     for config_id, values in defaults.items():
+        multi_value = config_id == "clientconfig.configserver.url"
         current = rpc("config_getObjects", {"id": config_id})
         if current:
             obj = current[0]
-            if obj.get("defaultValues") == values and (config_id != "clientconfig.configserver.url" or obj.get("multiValue")):
+            if obj.get("defaultValues") == values and obj.get("multiValue") == multi_value:
                 continue
             obj["defaultValues"] = values
             obj["possibleValues"] = list(dict.fromkeys((obj.get("possibleValues") or []) + values))
-            if config_id == "clientconfig.configserver.url":
-                obj["multiValue"] = True
+            obj["multiValue"] = multi_value
             rpc("config_updateObjects", {"configs": [obj]})
         else:
             rpc("config_createUnicode", {"id": config_id, "possibleValues": values, "defaultValues": values,
-                                       "editable": True, "multiValue": config_id == "clientconfig.configserver.url"})
+                                       "editable": True, "multiValue": multi_value})
 
 
 def bootstrap():

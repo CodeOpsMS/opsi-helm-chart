@@ -24,6 +24,8 @@ Enable PXE only with the chart's supported direct-network mode and a suitable no
 
 An existing DHCP server supplies the bootserver and architecture-specific filename. For x86_64 UEFI the OPSI filename is `opsi/loader/opsi-netboot.x64.efi`. Legacy BIOS uses `opsi/loader/opsi-netboot.x86.bios`. See [OPSI DHCP/PXE](https://docs.opsi.org/opsi-docs-en/4.3/server/components/dhcp-server.html).
 
+Bootstrap sets the global `netboot.linux-bootimage.cmdline.service` default to one HTTPS RPC endpoint derived from `server.externalUrl`: `https://opsi.example.com` becomes `https://opsi.example.com:443/rpc`, while an explicit native port such as 4447 is preserved. The value must be reachable from the booting client. `server.configServiceUrls` remains a list for Windows client failover; passing that list as a comma-separated boot-image service value prevents the boot image from connecting. Existing client-specific overrides take precedence over the global default and must use one valid endpoint too.
+
 For initial acceptance, scope the DHCP policy to the test client's MAC. Use an isolated test VM or a designated spare device. Do not change network-wide boot settings for an application smoke test. A successful small TFTP transfer does not establish that the full boot image or the installation workflow works.
 
 ## Acceptance evidence

@@ -114,6 +114,9 @@ if ! git -C "$pages_dir" diff --cached --quiet; then
   git -C "$pages_dir" commit -m "Publish opsi chart $version"
   git -C "$pages_dir" push origin HEAD:gh-pages
 fi
+# GITHUB_TOKEN pushes do not trigger a branch-based Pages build. Explicitly
+# request it on reruns too, in case a previous attempt stopped after the push.
+gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds" --jq .status
 pages_verified=false
 for attempt in {1..30}; do
   if curl -fsSL --max-time 15 "$pages_url/$package_name?run=$GITHUB_RUN_ID-$attempt" -o "$work/pages.tgz"; then

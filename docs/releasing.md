@@ -20,7 +20,7 @@ Before the first release:
 
 - Enable immutable GitHub releases.
 - Create the `gh-pages` branch and configure GitHub Pages to publish from its root.
-- Allow the publishing job to use `contents: write` and `packages: write`. The built-in `GITHUB_TOKEN` is sufficient; no personal access token or cluster credential is required.
+- Allow the publishing job to use `contents: write`, `packages: write` and `pages: write`. The built-in `GITHUB_TOKEN` is sufficient; no personal access token or cluster credential is required.
 - After the first OCI upload, set `helm-charts/opsi` to public and link it to this repository. If visibility is not yet public, the workflow stops before publishing the immutable release; rerun with the same candidate after correcting visibility.
 
 No workflow changes these repository settings automatically. Protect `main` with the static and runtime checks appropriate to the repository's review policy.
@@ -45,5 +45,7 @@ Publication uses the **same archive** for all destinations:
 | Helm repository | `https://codeopsms.github.io/opsi-helm-chart/` |
 
 OCI and Pages must serve the expected checksum publicly before the GitHub draft is published as an immutable release. Prerelease chart versions are marked prerelease and cannot become GitHub Latest. The release step never runs `helm package`.
+
+After updating `gh-pages`, the workflow explicitly requests a [GitHub Pages build](https://docs.github.com/en/rest/pages/pages#request-a-github-pages-build) before checking the public archive. A push made with `GITHUB_TOKEN` does not trigger a branch-based Pages build on its own. The build request also runs on release retries, so an interrupted first attempt can finish without another content change.
 
 If publication stops partway through, rerun the same inputs. Existing matching archives are accepted; mismatching or unpullable existing OCI versions cause an error rather than an overwrite. Fix the publication issue or increment the chart version and repeat acceptance.
