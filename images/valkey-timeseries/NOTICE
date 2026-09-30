@@ -1,0 +1,12 @@
+Built from opensource-for-valkey/valkey-timeseries
+https://github.com/opensource-for-valkey/valkey-timeseries
+Upstream commit: 82703430a89934b7f330aec1e332cabbec97ef49
+Upstream license: Apache-2.0 (included separately).
+
+CodeOpsMS changes: only MODULE_NAME in src/lib.rs is changed from "ts" to
+"timeseries" for the module-name check in unmodified opsiconfd 4.3.56.11.
+This is Valkey TimeSeries, not RedisTimeSeries. Upstream module version,
+commands and serialization type are unchanged. RedisTimeSeries RDB/AOF/DUMP
+payloads are not compatible. Use semantic migration of time series.
+
+The repository supplies Cargo.lock and portable x86-64 compiler flags.

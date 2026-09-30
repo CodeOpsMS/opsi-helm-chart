@@ -1,0 +1,70 @@
+name: Valkey TimeSeries module
+
+on:
+  pull_request:
+    paths:
+      - images/valkey-timeseries/**
+      - scripts/*valkey*
+      - docs/valkey-timeseries.md
+      - .github/workflows/valkey-timeseries.yml
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the built and verified artifact (main only)
+        type: boolean
+        default: false
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: valkey-timeseries-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and verify Valkey module
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && !inputs.publish)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build and exercise OPSI contract and persistence
+        env:
+          IMAGE: ghcr.io/codeopsms/valkey-timeseries-module:sha-${{ github.sha }}
+        run: scripts/build-valkey-timeseries.sh "$IMAGE" "$GITHUB_SHA"
+
+  publish:
+    name: Verify and publish Valkey module
+    if: github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    env:
+      IMAGE: ghcr.io/codeopsms/valkey-timeseries-module:sha-${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build and verify once
+        run: scripts/build-valkey-timeseries.sh "$IMAGE" "$GITHUB_SHA"
+      - name: Publish exactly the verified image
+        id: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/publish-valkey-timeseries.sh "$IMAGE"
+      - name: Attest the published manifest
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
+        with:
+          subject-name: ghcr.io/codeopsms/valkey-timeseries-module
+          subject-digest: ${{ steps.publish.outputs.digest }}
+          push-to-registry: true
