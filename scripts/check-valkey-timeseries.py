@@ -64,14 +64,14 @@ def seed(client):
         contract.require(client.command("TS.CREATE", key, "RETENTION", 86400000,
                                         "LABELS", "scope", "persistence") == b"OK", "persistent CREATE failed")
     client.command("TS.CREATERULE", "persistent:source", "persistent:minute", "AGGREGATION", "AVG", 60000)
-    for timestamp, value in ((120000, 1.5), (150000, 2.5), (180000, 4)):
+    for timestamp, value in ((120000, 1.5), (150000, 2.5), (180000, 4), (210000, 6)):
         client.command("TS.ADD", "persistent:source", timestamp, value)
     verify_persisted(client)
 
 
 def verify_persisted(client):
     contract.require(contract.samples(client.command("TS.RANGE", "persistent:source", "-", "+")) ==
-                     [[120000, 1.5], [150000, 2.5], [180000, 4.0]], "source samples changed after persistence")
+                     [[120000, 1.5], [150000, 2.5], [180000, 4.0], [210000, 6.0]], "source samples changed after persistence")
     contract.require(contract.samples(client.command("TS.RANGE", "persistent:minute", "-", "+")) ==
                      [[120000, 2.0]], "compacted samples changed after persistence")
     rules = contract.parsed_rules(client.command("TS.INFO", "persistent:source"))
@@ -119,10 +119,12 @@ def main():
                    "-v", data_volume + ":/data", "--entrypoint", "valkey-server", VALKEY_IMAGE, *server_args)
             port, client = wait_ready(name)
             try:
-                config = client.command("CONFIG", "GET", "*compatibility*")
-                contract.require(config == [b"timeseries.ts-compatibility-mode", b"strict"], "strict config prefix/value differs")
+                config = client.command("CONFIG", "GET", "timeseries.ts-compatibility-mode")
+                contract.require(config == [b"timeseries.ts-compatibility-mode", b"strict"],
+                                 f"strict config prefix/value differs: {config!r}")
                 threads = client.command("CONFIG", "GET", "timeseries.ts-num-threads")
-                contract.require(threads == [b"timeseries.ts-num-threads", b"2"], "module thread limit differs")
+                contract.require(threads == [b"timeseries.ts-num-threads", b"2"],
+                                 f"module thread limit differs: {threads!r}")
                 print(json.dumps({"module_bytes": int(docker("exec", name, "stat", "-c", "%s", "/modules/libvalkey_timeseries.so")),
                                   "compatibility_config": [item.decode() for item in config],
                                   "thread_config": [item.decode() for item in threads]}), flush=True)
@@ -153,7 +155,7 @@ def main():
                 verify_persisted(client)
                 client.command("TS.ADD", "persistent:source", 240000, 8)
                 contract.require(contract.samples(client.command("TS.RANGE", "persistent:minute", "-", "+")) ==
-                                 [[120000, 2.0], [180000, 4.0]], "aggregation did not resume after restart")
+                                 [[120000, 2.0], [180000, 5.0]], "aggregation accumulator did not resume after restart")
                 print(json.dumps({"mode": mode, "restart": "passed", "contract": contract.run(connection_args(port))}), flush=True)
             finally:
                 client.close()
