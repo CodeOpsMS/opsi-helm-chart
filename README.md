@@ -51,6 +51,8 @@ persistence:
 
 Replace the reserved example address and hostnames with your own endpoints. Allocate storage for your complete depot and installation media. Review [chart values](charts/opsi/values.yaml) and the chart schema for networking and storage options.
 
+`server.externalUrl` selects the single HTTPS service endpoint used by the PXE boot image. Bootstrap adds an explicit port (443 when omitted) and `/rpc`. Windows clients retain all entries in `server.configServiceUrls` for failover.
+
 Once this candidate is published:
 
 ```sh

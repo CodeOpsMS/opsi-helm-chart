@@ -121,7 +121,8 @@ function entrypoint {
         own = {"id": "opsi.example.invalid", "type": "OpsiConfigserver", "opsiHostKey": "unchanged-test-key",
                "notes": "keep me", "depotRemoteUrl": "smb://old/depot", "ipAddress": "192.0.2.1"}
         before = deepcopy(own)
-        desired = {"hostId": own["id"], "ipAddress": "192.0.2.2", "configServiceUrls": ["https://opsi.example.invalid:443"],
+        desired = {"hostId": own["id"], "ipAddress": "192.0.2.2", "externalUrl": "https://opsi.example.invalid",
+                   "configServiceUrls": ["https://opsi.example.invalid:443", "https://opsi.example.invalid:4447"],
                    **{key: f"webdavs://opsi.example.invalid:4447/{path}" for key, path in
                       [("depotRemoteUrl", "depot"), ("depotWebdavUrl", "depot"),
                        ("repositoryRemoteUrl", "repository"), ("workbenchRemoteUrl", "workbench")]}}
@@ -143,8 +144,65 @@ function entrypoint {
         self.assertEqual(changed["notes"], before["notes"])
         self.assertEqual(own, before)
         defaults = {params["id"]: params["defaultValues"] for method, params in calls if method == "config_createUnicode"}
-        self.assertEqual(set(defaults), {"clientconfig.configserver.url", "clientconfig.depot.protocol", "clientconfig.depot.protocol.netboot"})
+        self.assertEqual(set(defaults), {"clientconfig.configserver.url", "netboot.linux-bootimage.cmdline.service",
+                                        "clientconfig.depot.protocol", "clientconfig.depot.protocol.netboot"})
+        self.assertEqual(defaults["clientconfig.configserver.url"], desired["configServiceUrls"])
+        self.assertEqual(defaults["netboot.linux-bootimage.cmdline.service"], ["https://opsi.example.invalid:443/rpc"])
         self.assertEqual(defaults["clientconfig.depot.protocol.netboot"], ["webdav"])
+
+    def test_netboot_service_uses_one_external_endpoint_and_preserves_client_failover(self):
+        for external, expected in (
+            ("https://opsi.example.invalid", "https://opsi.example.invalid:443/rpc"),
+            ("https://opsi.example.invalid/", "https://opsi.example.invalid:443/rpc"),
+            ("https://opsi.example.invalid:443/", "https://opsi.example.invalid:443/rpc"),
+            ("https://opsi.example.invalid:4447", "https://opsi.example.invalid:4447/rpc"),
+            ("https://opsi.example.invalid:4447/", "https://opsi.example.invalid:4447/rpc"),
+        ):
+            with self.subTest(external=external):
+                server = {"hostId": "opsi.example.invalid", "externalUrl": external,
+                          "configServiceUrls": ["https://opsi.example.invalid:443", "https://opsi.example.invalid:4447"],
+                          "ipAddress": "192.0.2.2",
+                          **{key: f"webdavs://opsi.example.invalid:4447/{path}" for key, path in
+                             [("depotRemoteUrl", "depot"), ("depotWebdavUrl", "depot"),
+                              ("repositoryRemoteUrl", "repository"), ("workbenchRemoteUrl", "workbench")]}}
+                own = {**server, "id": server["hostId"], "type": "OpsiConfigserver"}
+                configs = {}
+                writes = []
+
+                def api(method, params):
+                    if method == "host_getObjects":
+                        return [own]
+                    if method == "config_getObjects":
+                        return [deepcopy(configs[params["id"]])] if params["id"] in configs else []
+                    if method == "config_createUnicode":
+                        configs[params["id"]] = deepcopy(params)
+                    elif method == "config_updateObjects":
+                        for obj in params["configs"]:
+                            configs[obj["id"]] = deepcopy(obj)
+                    else:
+                        self.fail(f"Unexpected write: {method}")
+                    writes.append(method)
+
+                netboot_id = "netboot.linux-bootimage.cmdline.service"
+                # Reconcile an existing broken value, then an existing correct
+                # value with incorrect multiValue metadata, as well as creation.
+                for existing in (None, ",".join(server["configServiceUrls"]), expected):
+                    configs.clear()
+                    if existing is not None:
+                        configs[netboot_id] = {"id": netboot_id, "defaultValues": [existing],
+                                               "possibleValues": [existing], "multiValue": True,
+                                               "description": "Preserve operator description"}
+                    with patch.object(runtime, "rpc", side_effect=api):
+                        runtime.reconcile({"server": server})
+                        self.assertEqual(configs[netboot_id]["defaultValues"], [expected])
+                        self.assertFalse(configs[netboot_id]["multiValue"])
+                        self.assertEqual(configs["clientconfig.configserver.url"]["defaultValues"], server["configServiceUrls"])
+                        self.assertTrue(configs["clientconfig.configserver.url"]["multiValue"])
+                        if existing is not None:
+                            self.assertEqual(configs[netboot_id]["description"], "Preserve operator description")
+                        writes.clear()
+                        runtime.reconcile({"server": server})
+                        self.assertEqual(writes, [])
 
 
 class TftpTests(unittest.TestCase):
@@ -247,6 +305,7 @@ class ChartTests(unittest.TestCase):
     def test_invalid_values_rejected(self):
         invalid = ("replicaCount=2", "pxe.enabled=true", "redis.port=6380", "admin.existingSecret=", "mysql.host=",
                    "connector.enabled=true", "admin.username=root", "server.externalUrl=http://opsi.example.invalid",
+                   "server.externalUrl=https://opsi.example.invalid/rpc",
                    "server.depotWebdavUrl=smb://opsi.example.invalid/depot", "server.ipAddress=999.2.3.4")
         for value in invalid:
             with self.subTest(value=value):
