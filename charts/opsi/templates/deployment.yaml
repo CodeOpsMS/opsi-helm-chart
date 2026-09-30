@@ -82,6 +82,12 @@ spec:
               protocol: UDP
             {{- end }}
           env:
+            {{- if .Values.fileStorage.enabled }}
+            - name: OPSI_CHART_FILE_STORAGE
+              value: "true"
+            - name: OPSICONFD_RUN_AS_USER
+              value: opsiconfd
+            {{- end }}
             - name: OPSI_HOST_ID
               value: {{ .Values.server.hostId | quote }}
             - name: OPSI_HOST_ROLE
@@ -159,6 +165,16 @@ spec:
               readOnly: true
             - name: data
               mountPath: /data
+            {{- if .Values.fileStorage.enabled }}
+            - name: file-storage
+              mountPath: /opt/opsi-file-storage
+              readOnly: true
+            {{- range $directory := list "depot" "repository" "workbench" }}
+            - name: file-storage
+              mountPath: /data/lib/{{ $directory }}
+              subPath: {{ $directory }}
+            {{- end }}
+            {{- end }}
             {{- if .Values.pxe.enabled }}
             - name: tftp
               mountPath: /tftpboot
@@ -181,6 +197,11 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: {{ include "opsi.dataClaim" . }}
+        {{- if .Values.fileStorage.enabled }}
+        - name: file-storage
+          persistentVolumeClaim:
+            claimName: {{ .Values.fileStorage.existingClaim }}
+        {{- end }}
         {{- if .Values.pxe.enabled }}
         - name: tftp
           persistentVolumeClaim:

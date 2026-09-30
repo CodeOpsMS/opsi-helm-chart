@@ -7,7 +7,7 @@ metadata:
     {{- include "opsi.labels" . | nindent 4 }}
 data:
   config.json: |
-    {{- dict "server" .Values.server "bootstrap" .Values.bootstrap "pxe" (dict "enabled" .Values.pxe.enabled) "image" (include "opsi.image" .) | toJson | nindent 4 }}
+    {{- dict "server" .Values.server "bootstrap" .Values.bootstrap "fileStorage" .Values.fileStorage "pxe" (dict "enabled" .Values.pxe.enabled) "image" (include "opsi.image" .) | toJson | nindent 4 }}
   {{- range $path, $_ := .Files.Glob "files/*" }}
   {{ base $path }}: |
     {{- $.Files.Get $path | nindent 4 }}

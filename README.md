@@ -2,7 +2,7 @@
 
 A community Helm chart for a persistent OPSI 4.3 config/depot server, including optional PXE/TFTP. The application uses external MySQL/MariaDB and Redis services. This repository is independent of the OPSI vendor.
 
-The chart targets **OPSI 4.3.56.11**. Version **0.1.0** is undergoing initial acceptance; the source version alone does not mean a release or production migration has been accepted. Published versions and their immutable source commits are listed in [Releases](https://github.com/CodeOpsMS/opsi-helm-chart/releases).
+The chart targets **OPSI 4.3.56.11**. Version **0.2.0** adds optional separate file storage for depot, repository and workbench, including explicitly configured NAS ownership mapping. Published versions and their immutable source commits are listed in [Releases](https://github.com/CodeOpsMS/opsi-helm-chart/releases). A chart release does not complete an existing server's production data migration.
 
 The complete feature set uses the [application image built by this repository](docs/image.md), which extends the official OPSI image with the directory connector, SMB/CIFS client deployment tools and system-Python certificate support. Both the upstream base and deployed image are pinned by digest.
 
@@ -53,11 +53,11 @@ Replace the reserved example address and hostnames with your own endpoints. Allo
 
 `server.externalUrl` selects the single HTTPS service endpoint used by the PXE boot image. Bootstrap adds an explicit port (443 when omitted) and `/rpc`. Windows clients retain all entries in `server.configServiceUrls` for failover.
 
-Once this candidate is published:
+Use a version listed in Releases:
 
 ```sh
 helm upgrade --install opsi oci://ghcr.io/codeopsms/helm-charts/opsi \
-  --version 0.1.0 --namespace opsi --create-namespace \
+  --version 0.2.0 --namespace opsi --create-namespace \
   --values opsi-values.yaml --wait --timeout 15m
 helm test opsi --namespace opsi
 ```
@@ -80,6 +80,7 @@ The administrator API and WebDAV use native OPSI HTTPS on port 4447. Preserve th
 
 - [Operation, networking and acceptance](docs/operations.md)
 - [Migration and rollback](docs/migration.md)
+- [Separate file storage and NAS ownership mapping](docs/storage.md)
 - [CI, live acceptance and release promotion](docs/releasing.md)
 
 ## Development checks

@@ -2,7 +2,7 @@ apiVersion: v2
 name: opsi
 description: OPSI config server with persistent data, native TLS and optional PXE on Kubernetes.
 type: application
-version: 0.1.0
+version: 0.2.0
 appVersion: "4.3.56.11"
 kubeVersion: ">=1.25.0-0"
 home: https://opsi.org

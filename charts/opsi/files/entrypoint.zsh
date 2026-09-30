@@ -3,6 +3,12 @@ unsetopt BG_NICE
 # Import the upstream functions without starting the server yet.
 source /entrypoint.sh set_environment_vars
 
+# Configure local service IDs before upstream moves its image directories.
+# Native OPSI permission checks stay enabled for both local and file storage.
+if [[ "${OPSI_CHART_FILE_STORAGE}" == "true" ]]; then
+    /usr/bin/python3 /opt/opsi-chart/file-storage.py || exit $?
+fi
+
 # Upstream set_host_id precedes init_volumes. Bind the persisted identity first,
 # so a recovered /data cannot be mistaken for the image's seed identity.
 typeset -g opsi_chart_initial_volume_setup=0

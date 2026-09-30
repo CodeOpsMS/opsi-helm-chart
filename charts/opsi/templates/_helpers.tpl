@@ -41,6 +41,11 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- default (printf "%s-tftp" (include "opsi.fullname" .)) .Values.pxe.tftpPersistence.existingClaim -}}
 {{- end -}}
 {{- define "opsi.validate" -}}
+{{- if .Values.fileStorage.enabled -}}
+{{- if not .Values.fileStorage.existingClaim -}}{{- fail "fileStorage.existingClaim requires a prepared separate PVC; see docs/storage.md" -}}{{- end -}}
+{{- if or (eq .Values.fileStorage.existingClaim (include "opsi.dataClaim" .)) (eq .Values.fileStorage.existingClaim (include "opsi.tftpClaim" .)) -}}{{- fail "fileStorage must use a separate claim from identity and TFTP storage" -}}{{- end -}}
+{{- if ne (empty .Values.fileStorage.mappedUid) (empty .Values.fileStorage.mappedGid) -}}{{- fail "fileStorage.mappedUid and mappedGid must be set together" -}}{{- end -}}
+{{- end -}}
 {{- if not (has (int .Values.replicaCount) (list 0 1)) -}}
 {{- fail "replicaCount must be 0 or 1; this config server cannot share mutable state between replicas" -}}
 {{- end -}}
